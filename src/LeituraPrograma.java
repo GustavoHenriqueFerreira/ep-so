@@ -4,24 +4,24 @@ import java.util.*;
 import java.io.File;
 
 public class LeituraPrograma {
-    //Metodo para ler os programas
+    //ler os programas
     private static Scanner entrada;
     private static int quantum;
 
-    //Método para abrir o arquivo arquivo.txt
-    public static List<BlocoDeControleDeProcessos> programasLidos() {
-        List<BlocoDeControleDeProcessos> listaDeProgramas = new ArrayList<>();
+    //abrir o arquivo arquivo.txt
+    public static List<BlocoControleProcesso> listarProgramasLidos() {
+        List<BlocoControleProcesso> listaDeProgramas = new ArrayList<>();
 
         File diretorio = new File("src/programas");
 
         for(File file : diretorio.listFiles()){
             try {
-                // Carrega somente os programas
+                // carrega somente os programas
                 if (!file.getName().equals("quantum.txt")){
                     entrada = new Scanner(file);
 
-                    //Carregar todos os arquivos (e seus comandos e gerar um BCP/Arquivo)
-                    BlocoDeControleDeProcessos blocoDoPrograma = new BlocoDeControleDeProcessos(lerDados(), Integer.parseInt(file.getName().replace(".txt", "")));
+                    //carregar todos os arquivos
+                    BlocoControleProcesso blocoDoPrograma = new BlocoControleProcesso(lerDados(), Integer.parseInt(file.getName().replace(".txt", "")));
                     listaDeProgramas.add(blocoDoPrograma);
                     fecharArquivo();
                 }
@@ -32,33 +32,35 @@ public class LeituraPrograma {
             }
         }
 
-        //Usando o collection sort para ordenar
+        //sort para ordenar
         Collections.sort(listaDeProgramas);
 
         return listaDeProgramas;
     }
 
-    //Metodo para ler os registros do arquivo
+    //ler os registros do arquivo
     public static List<String> lerDados() {
         List<String> listaDeComandos = new ArrayList<>();
 
         try {
-            while (entrada.hasNext()) {//enquanto houver dados para ler, mostrar os registros
+            while (entrada.hasNext()) {
+                //enquanto houver dados para ler, mostrar os registros
                 String comando = entrada.nextLine();
                 listaDeComandos.add(comando);
                 //System.out.println(comando);
             }
         }
         catch (NoSuchElementException erroElemento) {
+            // descartar a entrada para que o usuário possa tentar de novo
             System.err.println("Arquivo com problemas. Finalizando.");
-            entrada.nextLine(); // Descartar a entrada para que o usuário possa tentar de novo
+            entrada.nextLine();
         }
         catch (IllegalStateException erroEstado) {
             System.err.println("Erro ao ler o arquivo. Finalizando.");
         }
 
         return listaDeComandos;
-    }//fim do método lerDados
+    }
 
     public static int getQuantumFile(String fileName){
         try{
@@ -71,13 +73,14 @@ public class LeituraPrograma {
             return quantum;
         }
         catch (Exception e){
+            //terminar o programa
             System.err.println("Erro ao abrir o quantum. Finalizando.");
-            System.exit(1);//terminar o programa
+            System.exit(1);
             return 0;
         }
     }
 
-    //Metodo para fechar o arquivo aberto
+    //fechar o arquivo aberto
     public static void fecharArquivo() {
         if (entrada != null)
             entrada.close();

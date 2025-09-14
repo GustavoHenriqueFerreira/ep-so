@@ -1,29 +1,29 @@
 class Escalonador {
     public static void main(String[] args) {
         if(args.length == 0){
-            executaEscalonador();
+            executarEscalonador();
         }
         else{
-            executaSimulador();
+            executarSimulador();
         }
     }
 
-    private static void executaSimulador(){
+    private static void executarSimulador(){
         System.out.println("Iniciando simulacao...");
 
         Simulacao simula = new Simulacao();
-        simula.simulaEscalonador();
+        simula.simularEscalonador();
     }
 
-    private static void executaEscalonador(){
+    private static void executarEscalonador(){
         System.out.println("Iniciando escalonador...");
         LeituraPrograma.apagarLogs();
 
         GerenciadorEscalonador escalonador = new GerenciadorEscalonador("quantum.txt");
 
-        escalonador.carregandoProgramas();
-        escalonador.executaRoundRobin();
+        escalonador.carregarProgramas();
+        escalonador.executarRoundRobin();
 
-        escalonador.logFinal();
+        escalonador.imprimirLogFinal();
     }
 }

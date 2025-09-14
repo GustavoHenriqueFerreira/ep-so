@@ -2,23 +2,21 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class GerenciadorEscalonador {
-    //////////////////////////////////////////////
-    //             ATRIBUTOS CLASSE             //
-    //////////////////////////////////////////////
-    private int quantum, instrucoesExecutadas, trocas, totalProgramas;
-    private Instrucoes instrucao = null;
+    private int quantum;
+    private int instrucoesExecutadas;
+    private int trocas;
+    private int totalProgramas;
+    private Instrucao instrucao = null;
     private String log;
 
-    //Instancia de List com objetos do tipo Processos
-    protected List<BlocoDeControleDeProcessos> listaDeProntos = new ArrayList<>();
-    protected List<BlocoDeControleDeProcessos> listaDeBloqueados = new ArrayList<>();
+    //tipos de processos
+    protected List<BlocoControleProcesso> listaDeProntos = new ArrayList<>();
+    protected List<BlocoControleProcesso> listaDeBloqueados = new ArrayList<>();
 
-    //A tabela de processos possui um ponteiro para o BCP.
-    protected List<BlocoDeControleDeProcessos> tabelaDeProcessos = new ArrayList<>();
+    //tabela de processos tem ponteiro para o bloco de controle
+    protected List<BlocoControleProcesso> tabelaDeProcessos = new ArrayList<>();
 
-    //////////////////////////////////////////////
-    //            	 CONSTRUTORES 	            //
-    //////////////////////////////////////////////
+    // construtor
     public GerenciadorEscalonador(int quantum){
         this.quantum = quantum;
     }
@@ -27,212 +25,204 @@ public class GerenciadorEscalonador {
         this.quantum = LeituraPrograma.getQuantumFile(quantumFile);
     }
 
-    //////////////////////////////////////////////
-    //             			MÉTODOS  			//
-    //////////////////////////////////////////////
-
+    // metodos
     /**
-     * Metodos para gerenciar os processos e determinar seus estados
-     * Usar o algoritmo de Round-Robin, dividir o processador de acordo
-     * com a quantidade do Quantum.
+     * Conjunto de métodos responsáveis por gerenciar os processos
+     * e controlar a mudança de seus estados durante a execução.
+
+     * O gerenciamento segue a política de escalonamento Round-Robin,
+     * na qual o processador é compartilhado entre os processos de forma
+     * cíclica, respeitando o valor de quantum definido.
+
+     * Principais responsabilidades:
+     * - Atualizar o estado do processo (Pronto, Executando, Bloqueado, etc.).
+     * - Incrementar/decrementar o contador de instruções e o tempo de espera.
+     * - Simular a execução das instruções de acordo com o quantum.
+     * - Garantir a alternância justa entre os processos na tabela.
      */
-    public void carregandoProgramas(){
-        tabelaDeProcessos = LeituraPrograma.programasLidos();
+    public void carregarProgramas(){
+        tabelaDeProcessos = LeituraPrograma.listarProgramasLidos();
         totalProgramas = tabelaDeProcessos.size();
 
-        //Inicializa todos na lista de Prontos
-        for(BlocoDeControleDeProcessos processo : tabelaDeProcessos){
+        //todos na lista de prontos
+        for(BlocoControleProcesso processo : tabelaDeProcessos){
 
             listaDeProntos.add(processo);
 
             String log = "Carregando " + processo.getNomePrograma();
-            Log.gravarArquivoLog(quantum, log);
+            Log.gravarLog(quantum, log);
         }
     }
 
-    // Metodo principal do Escalonador Round Robin
-    public void executaRoundRobin() {
+    // Round Robin
+    public void executarRoundRobin() {
         System.out.println("INICIANDO ROUND ROBIN - QUANTUM = " + quantum);
 
-        // Enquanto ainda houver processos prontos ou bloqueados, o escalonador continua ativo
+        // enquanto ainda houver processos prontos ou bloqueados, o escalonador continua ativo
         while (listaDeProntos.size() > 0 || listaDeBloqueados.size() > 0) {
             try {
-                // Caso exista algum processo pronto para execução
+                // caso tenha algum processo pronto para execução
                 if (listaDeProntos.size() > 0) {
-                    // Seleciona o primeiro processo da fila de prontos
-                    BlocoDeControleDeProcessos programa = listaDeProntos.get(0);
+                    // seleciona o primeiro processo da fila de prontos
+                    BlocoControleProcesso programa = listaDeProntos.get(0);
 
-                    // Cria uma nova "instrução" a ser executada pelo processo, limitada pelo quantum
-                    instrucao = new Instrucoes(programa, quantum);
+                    // cria uma nova "instrução" a ser executada pelo processo, limitada pelo quantum
+                    instrucao = new Instrucao(programa, quantum);
 
-                    // Verifica se o processo já terminou antes de executar
+                    // verifica se o processo já terminou antes de executar
                     if (!instrucao.terminou()) {
-                        // Log de início da execução
+                        // log início da execução
                         log = "Executando " + programa.getNomePrograma();
-                        Log.gravarArquivoLog(quantum, log);
+                        Log.gravarLog(quantum, log);
 
-                        // Marca o processo como em execução
+                        // marca o processo como em execução
                         programa.setEstadoProcesso("Executando");
 
-                        // Executa as instruções do processo até atingir o quantum ou ocorrer E/S/SAÍDA
+                        // executa as instruções do processo até atingir o quantum ou ocorrer E/S/SAÍDA
                         instrucao.processaInstrucoes();
 
-                        // Atualiza estatísticas globais
-                        instrucoesExecutadas += instrucao.getInstrucoesExecutadas();
+                        // atualiza estatísticas globais
+                        instrucoesExecutadas += instrucao.buscaInstrucoesExecutadas();
                         trocas++; // Cada chamada é considerada uma troca de contexto
 
-                        // Log de interrupção após término do quantum
-                        log = "Interrompendo " + programa.getNomePrograma() + " após " + instrucao.getInstrucoesExecutadas() + " instruções";
-                        Log.gravarArquivoLog(quantum, log);
+                        // log de interrupção após término do quantum
+                        log = "Interrompendo " + programa.getNomePrograma() + " após " + instrucao.buscaInstrucoesExecutadas() + " instruções";
+                        Log.gravarLog(quantum, log);
 
-                        // Coloca o processo novamente como pronto
+                        // processo movido novamente como pronto
                         programa.setEstadoProcesso("Pronto");
 
-                        // Move o processo do início para o fim da fila (Round Robin clássico)
+                        // move o processo do início para o fim da fila (Round Robin)
                         listaDeProntos.add(listaDeProntos.remove(0));
 
-                        // Atualiza o tempo de espera dos processos bloqueados
+                        // tempo de espera dos processos bloqueados atualiza
                         decrementaTempoEspera_Bloqueados();
                     }
                 } else {
-                    // Se não há nenhum processo pronto, apenas decrementa o tempo dos bloqueados
+                    // caso não tenha nenhum processo pronto, apenas decrementa o tempo dos bloqueados
                     decrementaTempoEspera_Bloqueados();
                 }
             } catch (Exception e) {
-                // Tratamento de eventos especiais durante a execução de um quantum
+                // tratamento de eventos especiais durante a execução de um quantum
 
-                // Se o processo requisitou entrada/saída, ele é movido para a lista de bloqueados
+                // se o processo requisitou entrada/saída, ele é movido para a lista de bloqueados
                 if (e.getMessage().equals("E/S"))
                     executaES();
 
-                // Se o processo terminou (SAIDA), ele é removido da fila de prontos e da tabela
+                // se o processo terminou (SAIDA), ele é removido da fila de prontos e da tabela
                 if (e.getMessage().equals("SAIDA"))
-                    executaSaida();
+                    executarSaida();
 
-                // Atualiza o tempo de espera dos bloqueados em ambos os casos
+                // atualiza o tempo de espera dos bloqueados em ambos os casos
                 decrementaTempoEspera_Bloqueados();
             } finally {
-                // Ao final de cada iteração, imprime o estado atual das filas e da tabela
-                imprimeListaDeProntos();
-                imprimeListaDeBloqueados();
-                imprimeTabelaProcessos();
+                // ao final de cada iteração, imprime o estado atual das filas e da tabela
+                imprimirListaDeProntos();
+                imprimirListaDeBloqueados();
+                imprimirTabelaProcessos();
             }
         }
     }
 
     private void executaES(){
-        BlocoDeControleDeProcessos programaES = listaDeProntos.get(0);
+        BlocoControleProcesso programaES = listaDeProntos.get(0);
 
-        log = "Interrompendo " + programaES.getNomePrograma() + " após " + instrucao.getInstrucoesExecutadas() + " instruções";
+        log = "Interrompendo " + programaES.getNomePrograma() + " após " + instrucao.buscaInstrucoesExecutadas() + " instruções";
         System.out.println(log);
-        Log.gravarArquivoLog(quantum, log);
+        Log.gravarLog(quantum, log);
 
         log = "E/S iniciada em " + programaES.getNomePrograma();
         System.out.println(log);
-        Log.gravarArquivoLog(quantum, log);
+        Log.gravarLog(quantum, log);
 
-        instrucoesExecutadas += instrucao.getInstrucoesExecutadas();
-        trocas++;		//toda vez que chama o processaInstrucao e uma troca de contexto
+        instrucoesExecutadas += instrucao.buscaInstrucoesExecutadas();
+        trocas++;
 
         programaES.setTempoEspera(2);
         programaES.setEstadoProcesso("Bloqueado");
 
-        listaDeBloqueados.add(listaDeProntos.remove(0));		//Remove da fila de Prontos e coloca no final da fila de Bloqueados
+        //remove da fila de Prontos e coloca no final da fila de Bloqueados
+        listaDeBloqueados.add(listaDeProntos.remove(0));		
     }
 
-    private void executaSaida(){
-        BlocoDeControleDeProcessos programaSaida = listaDeProntos.remove(0);
+    private void executarSaida(){
+        BlocoControleProcesso programaSaida = listaDeProntos.remove(0);
 
         int posicao = tabelaDeProcessos.indexOf(programaSaida);
         tabelaDeProcessos.remove(posicao);
 
         System.out.println(programaSaida.getNomePrograma() + " REMOVIDO da lista de PRONTOS e da TABELA PROCESSOS!");
 
-        instrucoesExecutadas += instrucao.getInstrucoesExecutadas();
+        instrucoesExecutadas += instrucao.buscaInstrucoesExecutadas();
         trocas++;
 
         log = programaSaida.getNomePrograma() + " terminado. X=" + programaSaida.getRegistradorX() + ". Y=" + programaSaida.getRegistradorY();
-        Log.gravarArquivoLog(quantum, log);
+        Log.gravarLog(quantum, log);
     }
 
-    //	3 (c) A cada processo que passe pelo estado executando,
-    //	todos na fila de bloqueados tem seu tempo decrementado
+    //	processo que passe pelo estado executando, todos na fila de bloqueados tem seu tempo decrementado
     private void decrementaTempoEspera_Bloqueados(){
-        for(BlocoDeControleDeProcessos processo : listaDeBloqueados)
+        for(BlocoControleProcesso processo : listaDeBloqueados)
             processo.decrementaTempoEspera();
 
-        retiraZerados_Bloqueados();
+        retirarZerosBloqueados();
     }
 
-    //	3 (e) - Quando o tempo de espera de algum processo bloqueado chegar a zero
-    private void retiraZerados_Bloqueados(){
-        for(BlocoDeControleDeProcessos processo : listaDeBloqueados){
+    //	quando o tempo de espera de algum processo bloqueado chegar a zero
+    private void retirarZerosBloqueados(){
+        for(BlocoControleProcesso processo : listaDeBloqueados){
             if (processo.getTempoEspera() == 0){
                 //	recebe o status de pronto, remove da fila de bloqueados e inserido ao final da fila de processos prontos
-
                 int posicao = listaDeBloqueados.indexOf(processo);
                 listaDeBloqueados.get(posicao).setEstadoProcesso("Pronto");
                 listaDeProntos.add(listaDeBloqueados.remove(posicao));
-                retiraZerados_Bloqueados();
+                retirarZerosBloqueados();
             }
 
             if (listaDeBloqueados.size() == 0) return;
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////////
-    //            CALCULAR O TEMPO: MÉDIAS DE TROCAS, INSTRUCOES E PROGRAMAS           //
-    /////////////////////////////////////////////////////////////////////////////////////
-    public double getMediaTrocasContexto(){
+    // tempo de média de troca, intrução e programas
+    public double buscaMediaTrocasContexto(){
         System.out.println("MEDIA DE TROCAS:  " + (trocas/totalProgramas) + " / QTD DE TROCAS: " + trocas + " / QTD PROGRAMAS: " + totalProgramas);
         return ((double) trocas/totalProgramas);
     }
 
-    public double getMediaInstrucoes(){
+    public double buscaMediaInstrucoes(){
         System.out.println("MEDIA DE INSTRUCOES:  " + (instrucoesExecutadas/trocas) + " / QTD DE INSTRUCOES: " + instrucoesExecutadas + " / QTD TROCAS: " + trocas);
         return ((double) instrucoesExecutadas/trocas);
     }
 
-    //////////////////////////////////////////////
-    //              IMPRESSÃO	                  //
-    //////////////////////////////////////////////
-    public void imprimeTabelaProcessos(){
-
+    // imprimir
+    public void imprimirTabelaProcessos(){
         System.out.println("\n\n---- TABELA DE PROCESSOS");
-        for(BlocoDeControleDeProcessos processo : tabelaDeProcessos)
+        for(BlocoControleProcesso processo : tabelaDeProcessos)
             System.out.print(processo);
-
     }
 
-    public void imprimeListaDeProntos(){
-
+    public void imprimirListaDeProntos(){
         System.out.println("\n\n---- LISTA DE PRONTOS");
-        for(BlocoDeControleDeProcessos processo : listaDeProntos)
+        for(BlocoControleProcesso processo : listaDeProntos)
             System.out.print(processo);
-
     }
 
-    public void imprimeListaDeBloqueados(){
-
+    public void imprimirListaDeBloqueados(){
         System.out.println("\n---- LISTA DE BLOQUEADOS");
-        for(BlocoDeControleDeProcessos processo : listaDeBloqueados)
+        for(BlocoControleProcesso processo : listaDeBloqueados)
             System.out.print(processo);
-
     }
 
-    //////////////////////////////////////////////
-    //             			LOG                 //
-    //////////////////////////////////////////////
-    public void logFinal(){
+    public void imprimirLogFinal(){
         String log;
 
-        log = "MEDIA DE TROCAS: " + getMediaTrocasContexto();
-        Log.gravarArquivoLog(quantum, log);
+        log = "MEDIA DE TROCAS: " + buscaMediaTrocasContexto();
+        Log.gravarLog(quantum, log);
 
-        log = "MEDIA DE INSTRUCOES: " + getMediaInstrucoes();
-        Log.gravarArquivoLog(quantum, log);
+        log = "MEDIA DE INSTRUCOES: " + buscaMediaInstrucoes();
+        Log.gravarLog(quantum, log);
 
         log = "QUANTUM: " + quantum;
-        Log.gravarArquivoLog(quantum, log);
+        Log.gravarLog(quantum, log);
     }
 }

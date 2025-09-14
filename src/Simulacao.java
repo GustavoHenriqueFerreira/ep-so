@@ -1,19 +1,20 @@
 public class Simulacao {
-    public void simulaEscalonador(){
+    public void simularEscalonador(){
+        // apagar o que ja tinha sido feito anteriormente
         LeituraPrograma.apagarLogs();
 
-        //Tentar diferentes quantuns
+        //teste com quantums de 1 a 21
         for(int i = 1; i <= 21; i++){
-            System.out.println("\n\n\n********** INICIANDO SIMULACAO ************* QUANTUM = " + i);
+            System.out.println("\n Inicio Simulacao -- Quantum = " + i);
 
-            GerenciadorEscalonador escalonador = new GerenciadorEscalonador(i);
+            GerenciadorEscalonador gerenciadorEscalonador = new GerenciadorEscalonador(i);
 
-            escalonador.carregandoProgramas();
-            escalonador.executaRoundRobin();
+            gerenciadorEscalonador.carregarProgramas();
+            gerenciadorEscalonador.executarRoundRobin();
 
-            escalonador.logFinal();
+            gerenciadorEscalonador.imprimirLogFinal();
 
-            System.out.println("********** FINALIZANDO SIMULACAO ************* QUANTUM = " + i);
+            System.out.println("Fim Simulacao -- Quantum = " + i);
         }
     }
 }
